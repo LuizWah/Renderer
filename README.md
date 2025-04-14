@@ -159,7 +159,126 @@ Esta seção descreve as funções matemáticas e a estrutura definidas no arqui
 
 Estas funções matemáticas e a estrutura `matrix` fornecem os blocos de construção fundamentais para realizar as transformações geométricas e os cálculos necessários no pipeline de renderização 3D. Entender seu propósito e implementação é crucial para compreender como as cenas 3D são projetadas e renderizadas em uma tela 2D.
 
+## Estruturas e Classes Utilizadas no Renderer
 
+Esta seção detalha as estruturas (`struct`) e classes (`class`) definidas e utilizadas dentro do código C++ do renderer 3D fornecido.
 
+**1. `struct zbuffer` (Definida em `gl.h`)**
 
+* **Propósito:** Representa um buffer de profundidade (ou Z-buffer), que é usado para determinar a visibilidade de superfícies na renderização 3D. Ele armazena a profundidade do pixel mais próximo renderizado até o momento em cada coordenada da tela.
+* **Membros:**
+    * `float** buffer;`: Um array 2D de números de ponto flutuante. `buffer[x][y]` armazena o valor de profundidade para o pixel nas coordenadas da tela $(x, y)$.
+* **Construtor `zbuffer(int width, int height)`:**
+    * Aloca um array 2D de tamanho `width` x `height` para armazenar os valores de profundidade.
+    * Inicializa todos os valores de profundidade no buffer com `std::numeric_limits<float>::lowest()`. Isso garante que o primeiro fragmento renderizado em um pixel seja sempre considerado mais próximo do que o valor inicial.
+* **Uso:** Durante a rasterização de triângulos, a profundidade de cada fragmento é calculada e comparada com o valor no buffer de profundidade nas coordenadas da tela do fragmento. Se a profundidade do fragmento estiver mais próxima da câmera (valor de profundidade maior nesta implementação), ela sobrescreve o valor de profundidade existente e sua cor é escrita na imagem renderizada. Este processo garante que objetos mais próximos do visualizador ocluam objetos mais distantes.
+
+**2. `struct IShader` (Definida em `gl.h`)**
+
+* **Propósito:** Define uma interface (classe base abstrata) para shaders. Shaders são programas que rodam na unidade de processamento gráfico (GPU) e são responsáveis por transformar vértices (vertex shader) e determinar a cor de fragmentos (pixels) durante a rasterização (fragment shader).
+* **Membros:**
+    * `virtual Vec4f vertex(int iface, int nthvert) = 0;`: Uma função virtual pura que representa o estágio do vertex shader. Ela recebe o índice da face (`iface`) e o índice do vértice dentro dessa face (`nthvert`) como entrada e espera-se que retorne a posição transformada do vértice no espaço de clipe (como um `Vec4f`). O `= 0` indica que implementações concretas de shader devem fornecer sua própria implementação desta função.
+    * `virtual bool fragment(Vec3f bar, TGAColor &color) = 0;`: Uma função virtual pura que representa o estágio do fragment shader. Ela recebe as coordenadas baricêntricas (`bar`) do fragmento como entrada e uma referência a um objeto `TGAColor` (`color`). Espera-se que o shader calcule a cor final do fragmento e a armazene no objeto `color`. Ele também pode retornar um valor `bool` (embora não seja usado na implementação `Shader` fornecida) para indicar se o fragmento deve ser descartado.
+* **Uso:** A interface `IShader` permite que diferentes algoritmos de shading sejam implementados criando classes que herdam de `IShader` e sobrescrevem as funções `vertex` e `fragment`. Isso fornece flexibilidade em como o modelo é renderizado.
+
+**3. `struct matrix` (Definida em `geometry.h`)**
+
+* **Propósito:** Representa uma matriz 4x4, que é fundamental para realizar transformações lineares em gráficos 3D.
+* **Membros:**
+    * `float m[4][4] = {0};`: Um array 2D de números de ponto flutuante para armazenar os 16 elementos da matriz. Inicializado com zero.
+* **Uso:** As transformações de matriz são usadas para várias operações no pipeline de renderização, incluindo:
+    * **Transformação de Modelo:** Posicionar, rotacionar e escalar objetos na cena.
+    * **Transformação de Visualização:** Transformar o mundo de forma que a câmera esteja na origem, olhando para o eixo Z negativo.
+    * **Transformação de Projeção:** Projetar a cena 3D em um plano 2D (perspectiva ou ortográfica).
+
+**4. `class Model` (Definida em `model.h`)**
+
+* **Propósito:** Representa um modelo 3D carregado de um arquivo (provavelmente um arquivo OBJ com base no uso do construtor). Ele armazena a geometria do modelo (vértices, faces, normais, coordenadas UV) e as texturas associadas.
+* **Membros Privados:**
+    * `std::vector<Vec3f> verts_;`: Um vetor de objetos `Vec3f` armazenando as coordenadas 3D dos vértices do modelo.
+    * `std::vector<std::vector<Vec3i> > faces_;`: Um vetor de vetores de `Vec3i`. Cada vetor interno representa uma face (triângulo) e armazena três objetos `Vec3i`. Cada `Vec3i` provavelmente contém os índices do vértice, coordenada UV e normal para cada canto da face.
+    * `std::vector<Vec3f> norms_;`: Um vetor de objetos `Vec3f` armazenando os vetores normais para cada vértice.
+    * `std::vector<Vec2f> uv_;`: Um vetor de objetos `Vec2f` armazenando as coordenadas UV 2D para mapeamento de textura.
+    * `TGAImage diffusemap_;`: Um objeto `TGAImage` armazenando a textura difusa do modelo (a cor base).
+    * `TGAImage normalmap_;`: Um objeto `TGAImage` armazenando o mapa de normais, usado para adicionar detalhes à superfície.
+    * `TGAImage specularmap_;`: Um objeto `TGAImage` armazenando o mapa especular, que controla a intensidade dos realces.
+    * `void load_texture(std::string filename, const char *suffix, TGAImage &img);`: Uma função auxiliar privada para carregar imagens de textura de arquivos com base em um nome de arquivo e sufixo.
+* **Membros Públicos:**
+    * `Model(const char *filename);`: O construtor da classe `Model`. Ele provavelmente recebe o nome do arquivo do modelo como entrada e carrega a geometria e as texturas.
+    * `~Model();`: O destrutor da classe `Model`, responsável por liberar quaisquer recursos alocados.
+    * `int nverts();`: Retorna o número de vértices no modelo.
+    * `int nfaces();`: Retorna o número de faces (triângulos) no modelo.
+    * `Vec3f normal(int iface, int nthvert);`: Retorna o vetor normal do `nthvert`-ésimo vértice da `iface`-ésima face.
+    * `Vec3f normal(Vec2f uv);`: Retorna o vetor normal nas coordenadas UV fornecidas (provavelmente amostrado do mapa de normais).
+    * `Vec3f vert(int i);`: Retorna as coordenadas 3D do `i`-ésimo vértice.
+    * `Vec3f vert(int iface, int nthvert);`: Retorna as coordenadas 3D do `nthvert`-ésimo vértice da `iface`-ésima face.
+    * `Vec2f uv(int iface, int nthvert);`: Retorna as coordenadas UV do `nthvert`-ésimo vértice da `iface`-ésima face.
+    * `TGAColor diffuse(Vec2f uv);`: Retorna a cor difusa nas coordenadas UV fornecidas (amostrada da textura difusa).
+    * `float specular(Vec2f uv);`: Retorna a intensidade especular nas coordenadas UV fornecidas (amostrada do mapa especular).
+    * `std::vector<int> face(int idx);`: Retorna um vetor de índices representando os vértices da `idx`-ésima face. Com base no membro privado `faces_`, isso provavelmente retorna os índices dos vértices (e possivelmente os índices de UV e normal compactados juntos).
+* **Uso:** A classe `Model` encapsula os dados e a funcionalidade necessários para representar e acessar a geometria e a aparência de um objeto 3D. O loop de renderização em `main.cpp` interage com um objeto `Model` para recuperar as posições dos vértices, normais, coordenadas UV e informações de textura para cada face a ser renderizada.
+
+**5. `struct Shader` (Definida em `main.cpp`)**
+
+* **Propósito:** Uma implementação concreta da interface `IShader`, definindo um pipeline de shading específico para renderizar o modelo.
+* **Membros:**
+    * `mat<2,3,float> varying_uv;`: Uma matriz para armazenar as coordenadas UV interpoladas para os três vértices do triângulo atual. O prefixo `varying_` sugere que esses valores variarão pela superfície do triângulo e devem ser interpolados para cada fragmento.
+    * `mat<3,3,float> varying_nm;`: Uma matriz para armazenar os vetores normais interpolados para os três vértices do triângulo atual (após a transformação).
+    * `mat<4,3,float> varying_tri;`: Uma matriz para armazenar as coordenadas no espaço de clipe (`gl_Vertex`) dos três vértices do triângulo atual.
+    * `matrix MatrixProjection;`: Armazena a matriz de projeção, que transforma as coordenadas 3D do mundo em espaço de clipe 2D.
+    * `matrix viewMatrix;`: Armazena a matriz de visualização (transformação da câmera), que transforma as coordenadas do mundo em espaço da câmera.
+* **Funções Virtuais Sobrescritas (de `IShader`):**
+    * `virtual Vec4f vertex(int iface, int nthvert)`: Implementa o estágio do vertex shader. Ele recupera os dados do vértice do `model`, transforma a posição do vértice pela matriz Model-View-Projection combinada e armazena as coordenadas UV e as normais transformadas nas matrizes `varying_uv` e `varying_nm`, respectivamente. Ele retorna a posição transformada do vértice no espaço de clipe (`gl_Vertex`).
+    * `virtual bool fragment(Vec3f bar, TGAColor &color)`: Implementa o estágio do fragment shader. Ele recebe as coordenadas baricêntricas (`bar`) do fragmento, interpola as normais e as coordenadas UV usando esses pesos baricêntricos, calcula a iluminação difusa com base na normal interpolada e na direção da luz, amostra a textura difusa usando as coordenadas UV interpoladas e define a cor do fragmento.
+* **Uso:** Uma instância da struct `Shader` é criada em `main.cpp` e seus métodos `vertex` e `fragment` são chamados para cada vértice e fragmento do modelo que está sendo renderizado. `MatrixProjection` e `viewMatrix` são definidas em `main.cpp` e usadas dentro do vertex shader.
+
+Essas estruturas e classes trabalham juntas para definir os dados, as transformações e os processos de shading envolvidos na renderização do modelo 3D em uma imagem 2D. A classe `Model` fornece os dados 3D, a classe `Shader` define como esses dados são processados e coloridos, a struct `matrix` é usada para transformações geométricas e a struct `zbuffer` ajuda a resolver a visibilidade. A interface `IShader` permite que diferentes algoritmos de shading sejam conectados ao pipeline de renderização.
+
+## Shaders: O `struct Shader` e seu Funcionamento
+
+Esta seção detalha o `struct Shader` definido no arquivo `main.cpp` e explica como ele funciona dentro do pipeline de renderização. Este `struct` implementa a interface `IShader`, fornecendo a lógica específica para os estágios de vertex e fragment shader.
+
+O `Shader` neste código realiza um shading básico com iluminação difusa e utiliza informações de textura do modelo.
+
+**Membros do `struct Shader`:**
+
+* **`mat<2,3,float> varying_uv;`**: Uma matriz 2x3 que armazena as coordenadas UV para os três vértices do triângulo atualmente sendo processado. As coordenadas UV originais de cada vértice são atribuídas a uma coluna desta matriz no vertex shader. Durante a rasterização, essas coordenadas são interpoladas para cada fragmento usando as coordenadas baricêntricas. O prefixo `varying_` indica que esses valores variam pela superfície do triângulo.
+
+* **`mat<3,3,float> varying_nm;`**: Uma matriz 3x3 que armazena os vetores normais (transformados) para os três vértices do triângulo atual. Similarmente às coordenadas UV, as normais transformadas de cada vértice são armazenadas em uma coluna e serão interpoladas para cada fragmento.
+
+* **`mat<4,3,float> varying_tri;`**: Uma matriz 4x3 que armazena as coordenadas homogêneas (Vec4f) dos três vértices do triângulo após a transformação para o espaço de clipe (`gl_Vertex`). Embora este membro esteja presente, no código fornecido, a função `WorldToScreen` opera diretamente nos resultados do `shader.vertex`, e `varying_tri` não parece ser diretamente utilizada na rasterização ou no fragment shader.
+
+* **`matrix MatrixProjection;`**: Uma matriz 4x4 que armazena a matriz de projeção perspectiva. Esta matriz é calculada na função `main` com base no campo de visão (FOV), proporção da tela (AspectRatio), plano de corte próximo (znear) e plano de corte distante (zfar). Ela é usada no vertex shader para projetar os vértices 3D no espaço de clipe.
+
+* **`matrix viewMatrix;`**: Uma matriz 4x4 que armazena a matriz de visualização (ou câmera). Esta matriz é calculada na função `main` com base na posição da câmera (`cameraPos`), o ponto para onde a câmera está olhando (`cameraTarget`) e o vetor "para cima" da câmera (`cameraUp`). Ela transforma as coordenadas do mundo para as coordenadas da câmera.
+
+**Estágios do Shader:**
+
+O `struct Shader` implementa os dois estágios programáveis do pipeline de gráficos: o vertex shader (`vertex`) e o fragment shader (`fragment`).
+
+1.  **Vertex Shader (`virtual Vec4f vertex(int iface, int nthvert)`)**:
+    * Esta função é executada uma vez para cada vértice de cada triângulo do modelo.
+    * **Entrada:** Recebe o índice da face (`iface`) e o índice do vértice dentro dessa face (`nthvert`).
+    * **Processamento:**
+        * **Busca de Atributos:** Recupera as coordenadas UV do vértice (`model->uv(iface, nthvert)`) e as armazena na coluna `nthvert` da matriz `varying_uv`.
+        * **Transformação da Normal:** Transforma a normal do vértice (`model->normal(iface, nthvert)`) do espaço do modelo para uma orientação adequada no espaço de clipe. Isso envolve a multiplicação pela transposta inversa da matriz Model-View-Projection (MVP). O resultado é armazenado na coluna `nthvert` da matriz `varying_nm`.
+        * **Transformação do Vértice:** Transforma a posição do vértice (`model->vert(iface, nthvert)`) do espaço do modelo para o espaço de clipe. Isso é feito multiplicando as coordenadas homogêneas do vértice (criadas com `embed`) pela matriz Model-View-Projection (`Projected`), que é a multiplicação da `MatrixProjection` pela `viewMatrix`.
+        * **Armazenamento da Posição Projetada:** A posição do vértice transformada para o espaço de clipe (`gl_Vertex`) é armazenada na coluna `nthvert` da matriz `varying_tri`.
+    * **Saída:** Retorna as coordenadas do vértice transformadas para o espaço de clipe (`gl_Vertex`).
+
+2.  **Fragment Shader (`virtual bool fragment(Vec3f bar, TGAColor &color)`)**:
+    * Esta função é executada para cada fragmento (potencial pixel) gerado durante a rasterização de um triângulo.
+    * **Entrada:** Recebe as coordenadas baricêntricas (`bar`) do fragmento.
+    * **Processamento:**
+        * **Interpolação de Atributos:** Interpola o vetor normal (`bn`) e as coordenadas UV (`uv`) para o fragmento atual usando as coordenadas baricêntricas e os valores armazenados nas matrizes `varying_nm` e `varying_uv` (respectivamente). A normal interpolada é então normalizada.
+        * **Cálculo da Iluminação Difusa:** Calcula a intensidade da iluminação difusa tomando o produto escalar entre a normal interpolada (`bn`) e a direção da luz normalizada (`light_dir`). A função `std::max(0.f, ...)` garante que a iluminação seja apenas positiva (quando a superfície está voltada para a luz).
+        * **Texturização:** Amostra a cor difusa da textura do modelo (`model->diffuse(uv)`) usando as coordenadas UV interpoladas.
+        * **Cálculo da Cor Final:** A cor final do fragmento (`color`) é determinada multiplicando a cor difusa da textura pela intensidade da iluminação difusa.
+    * **Saída:** Retorna um valor booleano (`false` neste caso), que pode ser usado para descartar o fragmento (por exemplo, para efeitos de alpha testing), mas aqui sempre indica que o fragmento deve ser processado.
+
+**Fluxo de Dados:**
+
+O vertex shader processa cada vértice do modelo, transformando sua posição e passando dados (como UVs e normais transformadas) para o estágio de rasterização através das variáveis `varying_`. O rasterizador então interpola esses valores `varying_` através da superfície de cada triângulo, e os valores interpolados (juntamente com as coordenadas baricêntricas) são passados para o fragment shader. O fragment shader usa esses dados interpolados para calcular a cor final de cada fragmento, que é então escrita no framebuffer (a imagem final).
+
+Em resumo, o `struct Shader` define a lógica específica de como os vértices são transformados e como a cor de cada pixel na imagem final é determinada, implementando um modelo de iluminação difusa básica com suporte a texturas.
 
