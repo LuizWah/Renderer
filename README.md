@@ -143,7 +143,7 @@ Esta seção descreve as funções matemáticas e a estrutura definidas no arqui
 
 11. **`Vec3f cross(const Vec3f &a, const Vec3f &b)`:**
     * **Propósito:** Calcula o produto vetorial de dois vetores 3D `a` e `b`.
-    * **Produto Vetorial:** O produto vetorial de dois vetores resulta em um novo vetor que é perpendicular a ambos os vetores originais. Sua direção é dada pela regra da mão direita, e sua magnitude é igual à área do paralelogramo formado pelos dois vetores ($|a \times b| = |a| |b| \sin(\theta)$).
+    * **Produto Vetorial:** O produto vetorial de dois vetores resulta em um novo vetor que é perpendicular a ambos os vetores originais. Sua direção é dada pela regra da mão direita, e sua magnitude é igual à área do paralelogramo formado pelos dois vetores $||a \times b|| = ||a|| \cdot ||b|| \cdot \sin(\theta)$.
     * **Uso em Renderização:** O produto vetorial é usado para vários cálculos, como:
         * Encontrar o vetor normal de um polígono.
         * Determinar a orientação de superfícies.
