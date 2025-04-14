@@ -459,6 +459,7 @@ A décima segunda imagem revela uma tentativa de corrigir o problema de orienta�
 O *z-fighting* é visível como um padrão de interferência ou "tremulação" em algumas áreas da superfície do modelo, especialmente onde diferentes polígonos estão muito próximos em profundidade. Isso indica que, embora o buffer de profundidade esteja implementado, a precisão ou a forma como as comparações de profundidade são feitas ainda não são ideais. Pequenas diferenças na profundidade de polígonos adjacentes ou sobrepostos podem levar a essa competição visual, onde o renderizador alterna indecisamente qual face deve ser exibida.
 
 Este retorno do *z-fighting* demonstra a delicada natureza da implementação de um z-buffer eficaz. A correção de um problema (orientação) inadvertidamente reintroduziu outro (precisão da profundidade). Os próximos passos exigirão uma análise mais aprofundada de como os valores de profundidade são armazenados, comparados e utilizados durante a rasterização para minimizar ou eliminar completamente o *z-fighting*, garantindo uma renderização visualmente estável e correta.
+
 ![gigachad has z fighting](https://github.com/user-attachments/assets/4a3d2cc8-618e-419b-9241-8b569e43d589)
 
 ---
