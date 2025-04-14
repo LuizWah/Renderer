@@ -38,6 +38,6 @@ O processo de renderização itera sobre cada face (triângulo) do modelo 3D car
     * **Atualização do Buffer de Profundidade e da Imagem:** Se o fragmento não for descartado, o buffer de profundidade nas coordenadas do pixel atual é atualizado com a profundidade interpolada, e o pixel na imagem `render` é definido com a cor calculada.
 
 4.  **Saída da Imagem:**
-    * Após processar todas as faces do modelo, a imagem renderizada armazenada no objeto `render` é escrita em um arquivo TGA chamado "wwwwwwwwwwwwwwwwww.tga".
+    * Após processar todas as faces do modelo, a imagem renderizada armazenada no objeto `render` é escrita em um arquivo TGA chamado "wwwwwwwwwwwwwwwwww.tga", tem esse nome porque tinham muitos arquivos e tava ficando dificil de encontrat.
 
 Este processo passo a passo, executado para cada triângulo no modelo 3D, forma a base do pipeline de renderização 3D implementado neste código C++. O uso de um shader de vértices e um shader de fragmentos permite a personalização dos estágios de transformação e shading, possibilitando vários efeitos de renderização. O buffer de profundidade garante que objetos mais próximos ocluam os mais distantes, criando uma sensação de profundidade 3D na imagem final.
